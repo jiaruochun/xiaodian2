@@ -234,98 +234,98 @@
             appendMessage("bot", "你好，我是呼和浩特供电公司的大模型智能客服小电，我基于国产开源大模型Qwen2.5开发，支持自然语言理解和连续上下文多轮对话。您可以向我咨询报装、停电信息等问题，有什么可以帮您的吗？");
         });
 
-        async function sendMessage() {
-            const userInput = document.getElementById("user-input");
-            const message = userInput.value.trim();
+async function sendMessage() {
+    const userInput = document.getElementById("user-input");
+    const message = userInput.value.trim();
 
-            if (!message) return;
+    if (!message) return;
 
-            console.log("发送消息:", message); // 添加调试日志
+    console.log("发送消息:", message); // 添加调试日志
 
-            appendMessage("user", message);
-            userInput.value = "";
-            userInput.disabled = true;
+    appendMessage("user", message);
+    userInput.value = "";
+    userInput.disabled = true;
 
-            const responseDiv = appendMessage("bot", "");
-            let currentText = "";
+    const responseDiv = appendMessage("bot", "");
+    let currentText = "";
 
-            const payload = { message };
-            if (sessionId) {
-                payload.session_id = sessionId;
-            }
+    const payload = { message };
+    if (sessionId) {
+        payload.session_id = sessionId;
+    }
 
-            console.log("发送请求:", payload); // 添加调试日志
+    console.log("发送请求:", payload); // 添加调试日志
 
-            try {
-                //console.log("开始发送请求到:", 'http://localhost:3000/api/chat'); // 添加调试日志
-                //const response = await fetch('http://localhost:3000/api/chat', {
+    try {
+        //console.log("开始发送请求到:", 'http://localhost:3000/api/chat'); // 添加调试日志
+        //const response = await fetch('http://localhost:3000/api/chat', {
                                 // 将本地地址改为你的 Vercel 部署地址
-                const API_URL = 'https://2.mdznkf.xin/api/chat';
-                console.log("开始发送请求到:", API_URL);
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
+        const API_URL = 'https://2.mdznkf.xin/api/chat';
+        console.log("开始发送请求到:", API_URL);
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
 
-                console.log("收到响应:", response.status); // 添加调试日志
+        console.log("收到响应:", response.status); // 添加调试日志
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('data:') && line.includes('{"output"')) {
-                            try {
-                                const jsonStr = line.substring(line.indexOf('{'));
-                                const data = JSON.parse(jsonStr);
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data:') && line.includes('{"output"')) {
+                    try {
+                        const jsonStr = line.substring(line.indexOf('{'));
+                        const data = JSON.parse(jsonStr);
+                        
+                        if (data.output) {
+                            if (data.output.text) {
+                                currentText += data.output.text;
                                 
-                                if (data.output) {
-                                    if (data.output.text) {
-                                        currentText += data.output.text;
-                                        
-                                        requestAnimationFrame(() => {
-                                            // 改进的列表处理
-                                            let formattedText = currentText
-                                                .replace(/\n{3,}/g, '\n\n')
-                                                .replace(/^(\d+\.)\s*/gm, '1. ') // 转换数字列表为有序列表
-                                                .replace(/^-\s*/gm, '* ') // 转换破折号为无序列表
-                                                .trim();
-                                            
-                                            responseDiv.innerHTML = DOMPurify.sanitize(
-                                                marked.parse(formattedText)
-                                            );
-                                            
-                                            const chatBox = document.getElementById("chat-box");
-                                            chatBox.scrollTop = chatBox.scrollHeight;
-                                        });
-                                    }
-                                    if (data.output.session_id) {
-                                        sessionId = data.output.session_id;
-                                    }
-                                }
-                            } catch (error) {
-                                console.error("解析响应失败:", error, line);
+                                requestAnimationFrame(() => {
+                                    // 改进的列表处理
+                                    let formattedText = currentText
+                                        .replace(/\n{3,}/g, '\n\n')
+                                        .replace(/^(\d+\.)\s*/gm, '1. ') // 转换数字列表为有序列表
+                                        .replace(/^-\s*/gm, '* ') // 转换破折号为无序列表
+                                        .trim();
+
+                                    responseDiv.innerHTML = DOMPurify.sanitize(
+                                        marked.parse(formattedText)
+                                    );
+                                    
+                                    const chatBox = document.getElementById("chat-box");
+                                    chatBox.scrollTop = chatBox.scrollHeight;
+                                });
+                            }
+                            if (data.output.session_id) {
+                                sessionId = data.output.session_id;
                             }
                         }
+                    } catch (error) {
+                        console.error("解析响应失败:", error, line);
                     }
                 }
-            } catch (error) {
-                console.error("请求失败:", error);
-                responseDiv.textContent = "服务器错误，请稍后重试！";
-            } finally {
-                userInput.disabled = false;
-                userInput.focus();
             }
         }
+    } catch (error) {
+        console.error("请求失败:", error);
+        responseDiv.textContent = "服务器错误，请稍后重试！";
+    } finally {
+        userInput.disabled = false;
+        // userInput.focus();  // 移除这行代码，避免自动聚焦弹出键盘
+    }
+}
 
         function appendMessage(role, content) {
             const chatBox = document.getElementById("chat-box");
